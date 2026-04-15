@@ -1,0 +1,12 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tokens and Secrets
+kakao_token.json
+.env
+
+# Local machine specific
+.vscode/
+.idea/

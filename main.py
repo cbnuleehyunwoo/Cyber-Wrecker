@@ -43,24 +43,12 @@ def main():
 
     # 4. Search and Summarize News
     print(f"\n[{header_title}] 뉴스를 분석 중입니다. 잠시만 기다려 주세요...")
-    raw_news = search_news(search_query)
+    # crawler.py의 search_news 내부에서 이미 요약과 URL 변환을 수행함
+    news_items = search_news(search_query)
     
-    if not raw_news:
+    if not news_items:
         print("관련 뉴스를 찾을 수 없습니다.")
         return
-
-    # Process summaries for the news items
-    news_items = []
-    for n in raw_news:
-        print(f" - 요약 중: {n['title'][:30]}...")
-        summary = get_article_summary(n['link'], n['description'])
-        news_items.append({
-            "title": n['title'],
-            "press": n['press'],
-            "link": n['link'],
-            "summary": summary
-        })
-        time.sleep(0.5) # Anti-blocking
 
     # 5. Send to KakaoTalk
     print(f"\n{len(news_items)}개의 뉴스를 카카오톡으로 전송합니다.")

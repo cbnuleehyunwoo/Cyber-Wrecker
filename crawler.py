@@ -34,7 +34,8 @@ def get_real_url(google_url):
         return google_url
 
 def get_article_summary(url, rss_snippet=""):
-    """기사 본문을 추출하며, 실패 시 RSS에서 제공하는 기본 스니펫을 반환합니다."""
+    """기사 본문을 추출하며, 실제 URL과 요약문을 함께 반환합니다."""
+    real_url = url
     try:
         real_url = get_real_url(url)
         
@@ -50,27 +51,24 @@ def get_article_summary(url, rss_snippet=""):
         for s in selectors:
             content = soup.select_one(s)
             if content:
-                # 불필요한 태그 제거
                 for t in content(['script', 'style', 'header', 'footer']): t.decompose()
                 content_text = ' '.join(content.get_text(separator=' ', strip=True).split())
                 break
 
-        # 본문 추출 성공 시 (글자 수 60자 이상 기준)
         if len(content_text) > 60:
-            return (content_text[:140] + "...") if len(content_text) > 140 else content_text
+            summary = (content_text[:140] + "...") if len(content_text) > 140 else content_text
+            return real_url, summary
 
-        # 본문 추출 실패 시 RSS에 포함된 기본 요약(Snippet) 활용
         if rss_snippet:
-            # HTML 태그 제거
             clean_snippet = BeautifulSoup(rss_snippet, "html.parser").get_text()
-            return f"[미리보기] {clean_snippet[:120]}..."
+            return real_url, f"[미리보기] {clean_snippet[:120]}..."
             
-        return "본문 요약을 가져올 수 없는 기사입니다."
+        return real_url, "본문 요약을 가져올 수 없는 기사입니다."
     except:
-        return f"[미리보기] {rss_snippet[:100]}..." if rss_snippet else "요약 실패"
+        return real_url, (f"[미리보기] {rss_snippet[:100]}..." if rss_snippet else "요약 실패")
 
 def search_news(keyword, count=5):
-    """구글 뉴스 RSS를 가져옵니다."""
+    """구글 뉴스 RSS를 가져와서 '진짜 주소'로 변환해 저장합니다."""
     encoded_kw = urllib.parse.quote(keyword)
     url = f"https://news.google.com/rss/search?q={encoded_kw}&hl=ko&gl=KR&ceid=KR:ko"
     
@@ -85,16 +83,23 @@ def search_news(keyword, count=5):
             title = title_full.rsplit(' - ', 1)[0] if ' - ' in title_full else title_full
             press = title_full.rsplit(' - ', 1)[1] if ' - ' in title_full else "알 수 없음"
             
+            google_link = item.findtext('link', '')
+            description = item.findtext('description', '')
+            
+            # [중요] 메시지 발송 전에 여기서 진짜 URL로 변환합니다.
+            real_url, summary = get_article_summary(google_link, description)
+            
             news_items.append({
                 "title": title,
                 "press": press,
-                "link": item.findtext('link', ''),
-                "description": item.findtext('description', '') # 요약 실패 시 대비용
+                "link": real_url,  # 이제 news.google.com이 아닌 n.news.naver.com 등이 들어감
+                "summary": summary
             })
+            time.sleep(0.5) # 리다이렉션 추적 시 과부하 방지
+            
     except Exception as e:
         print(f"에러: {e}")
     return news_items
-
 if __name__ == "__main__":
     query = input("검색 키워드: ").strip()
     if query:

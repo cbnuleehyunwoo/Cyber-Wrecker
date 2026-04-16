@@ -19,7 +19,7 @@
 
 1. 아래 URL을 브라우저에 입력하여 인증 코드를 받습니다 (REST_API_KEY 입력 필요).
    ```text
-   https://kauth.kakao.com/oauth/authorize?client_id=51ffe34ebcb77969698dfcf06b97d267&redirect_uri=https://www.google.com/&response_type=code&scope=talk_message,friends
+   https://kauth.kakao.com/oauth/authorize?client_id={REST_API}uri={REDIRECT_URI}&response_type=code&scope=talk_message,friends
    ```
 2. 로그인 후 이동된 페이지의 주소창에서 `code=...` 부분을 복사합니다.
 3. `kakao_auth.py`를 사용하여 최초 토큰을 저장합니다 (수동 실행 필요).

@@ -5,6 +5,7 @@ __pycache__/
 
 # Tokens and Secrets
 kakao_token.json
+tokens/
 .env
 
 # Local machine specific

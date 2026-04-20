@@ -1,6 +1,5 @@
 package com.example
 
-import com.example.providers.NaverNewsProvider
 import com.example.services.NewsService
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -21,6 +20,7 @@ fun Application.module() {
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true
+            encodeDefaults = false // 글로벌 설정: null 필드 완전히 제거 (카카오 규격 준수 필수)
             prettyPrint = true
             isLenient = true
         })
@@ -41,35 +41,73 @@ fun Application.module() {
 
         // 카카오톡 챗봇 스킬 엔드포인트
         post("/kakao/news") {
-            val request = call.receive<com.example.models.KakaoRequest>()
-            // 오픈빌더에서 설정한 파라미터 명칭 'sys_text' 사용
-            val keyword = request.action.params["sys_text"] 
-                ?: request.action.params["keyword"] 
-                ?: "최신 뉴스"
-            
-            val newsItems = newsService.getNews(keyword)
-            
-            val kakaoItems = newsItems.take(5).map { item ->
-                com.example.models.KakaoListItem(
-                    title = item.title,
-                    description = item.summary.take(50) + "...",
-                    link = com.example.models.KakaoLink(web = item.link)
-                )
-            }
-
-            val response = com.example.models.KakaoResponse(
-                template = com.example.models.KakaoTemplate(
-                    outputs = listOf(
-                        com.example.models.KakaoOutput(
-                            listCard = com.example.models.KakaoListCard(
-                                header = com.example.models.KakaoHeader(title = "'$keyword' 관련 뉴스"),
-                                items = kakaoItems
+            try {
+                val request = call.receive<com.example.models.KakaoRequest>()
+                
+                val keyword = request.action.params["sys_text"] 
+                    ?: request.action.params["keyword"] 
+                    ?: request.userRequest.utterance.trim()
+                    .takeIf { it.isNotEmpty() }
+                    ?: "최신 뉴스"
+                
+                println("Processing keyword: $keyword")
+                val newsItems = newsService.getNews(keyword)
+                
+                val response = if (newsItems.isEmpty()) {
+                    com.example.models.KakaoResponse(
+                        version = "2.0",
+                        template = com.example.models.KakaoTemplate(
+                            outputs = listOf(
+                                com.example.models.KakaoOutput(
+                                    simpleText = com.example.models.KakaoSimpleText(text = "'$keyword'에 대한 검색 결과가 없습니다.")
+                                )
                             )
                         )
                     )
-                )
-            )
-            call.respond(response)
+                } else {
+                    val kakaoItems = newsItems.take(5).map { item ->
+                        com.example.models.KakaoListItem(
+                            title = item.title.take(35), // 35자로 더 엄격하게 제한
+                            description = item.summary.take(50),
+                            link = com.example.models.KakaoLink(web = item.link)
+                        )
+                    }
+
+                    com.example.models.KakaoResponse(
+                        version = "2.0",
+                        template = com.example.models.KakaoTemplate(
+                            outputs = listOf(
+                                com.example.models.KakaoOutput(
+                                    listCard = com.example.models.KakaoListCard(
+                                        header = com.example.models.KakaoHeader(title = "'$keyword' 관련 뉴스"),
+                                        items = kakaoItems
+                                    )
+                                )
+                            )
+                        )
+                    )
+                }
+
+                // 디버깅: 보낼 응답을 JSON으로 찍어보기 (이제 null이 정말 없어야 함)
+                val responseJson = Json { encodeDefaults = false; prettyPrint = true }.encodeToString(com.example.models.KakaoResponse.serializer(), response)
+                println("Sending Response: $responseJson")
+
+
+                
+                call.respond(response)
+            } catch (e: Exception) {
+                println("Critical Error in /kakao/news: ${e.message}")
+                e.printStackTrace()
+                // 에러 발생 시 최소한의 텍스트 응답이라도 보냄
+                call.respond(mapOf(
+                    "version" to "2.0",
+                    "template" to mapOf(
+                        "outputs" to listOf(
+                            mapOf("simpleText" to mapOf("text" to "서버 오류가 발생했습니다: ${e.message}"))
+                        )
+                    )
+                ))
+            }
         }
     }
 }

@@ -4,7 +4,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class KakaoRequest(
+    val userRequest: UserRequest,
     val action: Action
+)
+
+@Serializable
+data class UserRequest(
+    val utterance: String
 )
 
 @Serializable
@@ -14,7 +20,7 @@ data class Action(
 
 @Serializable
 data class KakaoResponse(
-    val version: String = "2.0",
+    val version: String, // 기본값 제거하여 반드시 JSON에 포함되도록 함
     val template: KakaoTemplate
 )
 
@@ -25,7 +31,14 @@ data class KakaoTemplate(
 
 @Serializable
 data class KakaoOutput(
-    val listCard: KakaoListCard? = null
+    // null인 경우 JSON에서 아예 제외되어야 함
+    val listCard: KakaoListCard? = null,
+    val simpleText: KakaoSimpleText? = null
+)
+
+@Serializable
+data class KakaoSimpleText(
+    val text: String
 )
 
 @Serializable

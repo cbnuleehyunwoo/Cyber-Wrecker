@@ -1,0 +1,20 @@
+.gradle
+build
+/out
+!gradle/wrapper/gradle-wrapper.jar
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+### OS ###
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### Local Configuration ###
+local.properties
+.env
